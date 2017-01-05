@@ -1,2 +1,3 @@
-# submit-base
-CME212 Homework Submission Repo
+# CME212 Homework Submission Repo
+
+This repository contains homework assignments for CME 212.
