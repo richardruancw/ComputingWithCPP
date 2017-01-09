@@ -1,3 +1,3 @@
-# CME212 Homework Submission Repo
+# CME212 Submission Repository
 
-This repository contains homework assignments for CME 212.
+This is your CME212 homework repository. Feel free to edit your README and any other files!
