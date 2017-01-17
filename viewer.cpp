@@ -62,8 +62,8 @@ int main(int argc, char** argv)
   // Launch a viewer
   CME212::SFML_Viewer viewer;
 
-  viewer.draw_graph_nodes(graph);  // Draw only the nodes
-  //viewer.draw_graph(graph);      // Draw the nodes and edges
+  //viewer.draw_graph_nodes(graph);  // Draw only the nodes
+  viewer.draw_graph(graph);      // Draw the nodes and edges
 
   // Center the view and enter the event loop for interactivity
   viewer.center_view();
