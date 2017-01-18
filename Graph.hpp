@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <vector>
 #include <cassert>
+#include <unordered_set>
 
 #include "CME212/Util.hpp"
 #include "CME212/Point.hpp"
@@ -110,7 +111,7 @@ class Graph {
      */
     bool operator==(const Node& n) const {
       // HW0: YOUR CODE HERE
-      return graph_->node_list[uid_].x == n.graph_->node_list[n.uid_].x;
+      return norm_1(graph_->node_list[uid_]) == norm_1(n.graph_->node_list[n.uid_]);
     }
 
     /** Test whether this node is less than @a n in a global order.
@@ -123,7 +124,7 @@ class Graph {
      */
     bool operator<(const Node& n) const {
       // HW0: YOUR CODE HERE
-      return graph_->node_list[uid_].x < n.graph_->node_list[n.uid_].x;
+      return norm_1(graph_->node_list[uid_]) < norm_1(n.graph_->node_list[n.uid_]);
     }
 
    private:
@@ -236,8 +237,17 @@ class Graph {
      * std::map<>. It need not have any interpretive meaning.
      */
     bool operator<(const Edge& e) const {
-      return (graph_->edge_list[uid_].first + graph_->edge_list[uid_].second) < 
-             (e.graph_->edge_list[e.uid_].first + e.graph_->edge_list[e.uid_].second);
+	size_type min_a = std::min(graph_->edge_list[uid_].first, graph_->edge_list[uid_].first);
+	size_type max_a = std::max(graph_->edge_list[uid_].first, graph_->edge_list[uid_].first);
+	size_type min_b = std::min(e.graph_->edge_list[e.uid_].first, e.graph_->edge_list[e.uid_].second);
+	size_type max_b = std::max(e.graph_->edge_list[e.uid_].first, e.graph_->edge_list[e.uid_].second);
+	if (min_a < min_b) {
+		return true;
+	} else if (min_a == min_b && max_a < max_b) {
+		return true;
+	} else {
+		return false;
+	}			
     }
 
    private:
