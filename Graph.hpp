@@ -105,6 +105,14 @@ class Graph {
       return uid_;
     }
 
+//--comment
+//--This implementation doesn't satisfy the specs! Two nodes from different graphs
+//--that have the same point in their respective graphs would here be returned
+//--as equal nodes, when they're not even part of the same graph 
+//--Also the specs specifically say that equal nodes have the same *index*, no necessarily
+//--the same point. In fact, our specs overall allo for multiple (distinct) nodes that have
+//--the same point. These should be considered different nodes.
+//--START
     /** Test whether this node and @a n are equal.
      *
      * Equal nodes have the same graph and the same index.
@@ -113,7 +121,7 @@ class Graph {
       // HW0: YOUR CODE HERE
       return norm_1(graph_->node_list[uid_]) == norm_1(n.graph_->node_list[n.uid_]);
     }
-
+//--END
     /** Test whether this node is less than @a n in a global order.
      *
      * This ordering function is useful for STL containers such as
@@ -122,11 +130,19 @@ class Graph {
      * The node ordering relation must obey trichotomy: For any two nodes x
      * and y, exactly one of x == y, x < y, and y < x is true.
      */
+//--comment
+//--your global ordering here is *technically* correct, but only because your == op
+//--is incorrect. Once you fix op==, this < implementation will no longer obey
+//--trichotomy (two nodes x and y with same index but different graphs will not return
+//--true for *any* of  x==y, x<y, y<x). Also, you'll have some weirdness of having 
+//--op== be implemented iwth index and < with points. Rethink this function before
+//--the next assignment! Come to OH if you want to chat in more detail!
+//--START 
     bool operator<(const Node& n) const {
       // HW0: YOUR CODE HERE
       return norm_1(graph_->node_list[uid_]) < norm_1(n.graph_->node_list[n.uid_]);
     }
-
+//--END
    private:
     // Allow Graph to access Node's private member data and functions.
     friend class Graph;
@@ -226,11 +242,15 @@ class Graph {
       if (e.graph_ != graph_) {
         return false;
       } else  {
+//--comment
+//--In op< you do a good job of testing all posibilities of first/second uid being min/max,
+//--but here, you'll return that edge (a ,b) !== (b,a), which violates the spec.
+//--START
         return graph_->edge_list[uid_].first == e.graph_->edge_list[e.uid_].first && 
         graph_->edge_list[uid_].second == e.graph_->edge_list[e.uid_].second;
       }
     }
-
+//--END
     /** Test whether this edge is less than @a e in a global order.
      *
      * This ordering function is useful for STL containers such as
@@ -315,11 +335,23 @@ class Graph {
    */
   Edge add_edge(const Node& a, const Node& b) {
     // HW0: YOUR CODE HERE
+//--comment
+//--Duplicate code. Why not just use the has_edge() function?
+//--START
     for (size_type i = 0; i < edge_list.size(); ++i) {
         const auto &temp = edge_list[i];
         if ((a.uid_ == temp.first && b.uid_ == temp.second)
          || (a.uid_ == temp.second && b.uid_ == temp.first)) {
+//--END
+//--comment
+//--By having only an edge id in your Edge class and not two node ids, you're unable to 
+//--meet the specification in this function that edge.node1()==a and edge.node2()==b
+//--In order to meet all the specs, you should consider another implementation! 
+//--(You'll probably have to end up storing two node ids. But if you think of a more
+//--creative solution, let me know! I'd be really curious to hear it!)
+//--START
           return edge(i);
+//--END
         }
     } 
     edge_list.push_back(std::make_pair(a.uid_, b.uid_));
@@ -347,3 +379,5 @@ class Graph {
 };
 
 #endif // CME212_GRAPH_HPP
+
+//--grade8
