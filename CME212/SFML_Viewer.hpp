@@ -45,6 +45,22 @@ template<> struct gltype<int>            : gltype_v<GL_INT>            {};
 template<> struct gltype<float>          : gltype_v<GL_FLOAT>          {};
 template<> struct gltype<double>         : gltype_v<GL_DOUBLE>         {};
 
+// A default color functor that returns white for anything it recieves
+struct DefaultColor {
+  template <typename NODE>
+  Color operator()(const NODE&) {
+    return Color(1);
+  }
+};
+
+// A default position functor that returns node.position() for any node
+struct DefaultPosition {
+  template <typename NODE>
+  Point operator()(const NODE& node) {
+    return node.position();
+  }
+};
+
 /** Print any outstanding OpenGL error to std::cerr. */
 void check_gl_error(const char* context = nullptr) {
   GLenum errCode = glGetError();;
@@ -56,7 +72,7 @@ void check_gl_error(const char* context = nullptr) {
   }
 }
 
-/** SDLViewer class to view points and edges
+/** Class that provides a graphical window context for drawing points and edges.
  */
 class SFML_Viewer
 {
@@ -66,7 +82,9 @@ class SFML_Viewer
 
   /** Constructor */
   SFML_Viewer(int sx = 640, int sy = 480)
-      : window_(sf::VideoMode(sx, sy), "CME212"),
+      : window_(sf::VideoMode(sx, sy), "CME212",
+                sf::Style::Resize | sf::Style::Close,
+                sf::ContextSettings(24 /*depth*/, 8 /*stencil*/, 2 /*anti*/)),
         render_requested_(true),
         mouse_mask_(0)
   {
@@ -174,6 +192,149 @@ class SFML_Viewer
         if (it1 != nodemap.end() && it2 != nodemap.end()) {
           edges_.push_back(it1->second);
           edges_.push_back(it2->second);
+        }
+      }
+    }
+
+    request_render();
+  }
+
+  /** Return an empty node map for the input graph.
+   * @param  Not used. Convenience for type deduction.
+   * @tparam G Type that defines a node_type:  typename G::node_type
+   *
+   * Node maps are passed to, and modified by, add_nodes() and add_edges().
+   */
+  template <typename G>
+  std::map<typename G::node_type, unsigned> empty_node_map(const G&) const
+  {
+    return std::map<typename G::node_type, unsigned>();
+  }
+
+  /** Add the nodes in the range [first, last) to the display.
+   * @param[in] first,last   Iterator range of nodes
+   * @param[in,out] node_map Tracks node identities for use by add_edges().
+   *    Create this argument by calling empty_node_map(graph).
+   * @tparam InputIterator   Iterator type over nodes.
+   *     std::is_same<typename std::iterator_traits<InputIterator>::value_type,
+   *                  typename Map::key_type>::value
+   *     requires value_type (node) to provide   Point ::position() const
+   * @tparam Map     std::map with the key_type satisfying the above.
+   *
+   * @post For all i in [@a first, @a last), node_map.count(*i) == 1.
+   *
+   * Uses white for color and node.position() for position. It's OK to add a
+   * Node more than once. Second and subsequent adds update the existing
+   * node's position.
+   */
+  template <typename InputIterator, typename Map>
+  void add_nodes(InputIterator first, InputIterator last,
+                 Map& node_map)
+  {
+    return add_nodes(first, last, DefaultColor(), DefaultPosition(), node_map);
+  }
+
+  /** Add the nodes in the range [first, last) to the display.
+   * @param[in] first,last    Iterator range of nodes
+   * @param[in] color_functon Function from a node to a color.
+   *                            CME212::Color color_function(node)
+   * @param[in,out] node_map Tracks node identities for use by add_edges().
+   *    Create this argument by calling empty_node_map(graph).
+   * @tparam InputIterator   Iterator type over nodes.
+   *     std::is_same<typename std::iterator_traits<InputIterator>::value_type,
+   *                  typename Map::key_type>::value
+   *     requires value_type (node) to provide   Point ::position() const
+   * @tparam ColorFn Function type that maps value_type (node) to CME212:Color.
+   * @tparam Map     std::map with the key_type satisfying the above.
+   *
+   * @post For all i in [@a first, @a last), node_map.count(*i) == 1.
+   *
+   * Uses color_function for color and node.position() for position. It's OK
+   * to add a Node more than once. Second and subsequent adds update the
+   * existing node's position.
+   */
+  template <typename InputIterator, typename ColorFn, typename Map>
+  void add_nodes(InputIterator first, InputIterator last,
+                 ColorFn color_function, Map& node_map)
+  {
+    return add_nodes(first, last, color_function, DefaultPosition(), node_map);
+  }
+
+  /** Add the nodes in the range [first, last) to the display.
+   * @param[in] first,last    Iterator range of nodes
+   * @param[in] color_functon Function from a node to a color.
+   *                            CME212::Color color_function(node)
+   * @param[in] position_function Function from a node to a position.
+   *                            Point position_function(node)
+   * @param[in,out] node_map Tracks node identities for use by add_edges().
+   *    Create this argument by calling empty_node_map(graph).
+   * @tparam InputIterator   Iterator type over nodes.
+   *     std::is_same<typename std::iterator_traits<InputIterator>::value_type,
+   *                  typename Map::key_type>::value
+   * @tparam ColorFn Function type that maps value_type (node) to CME212:Color.
+   * @tparam PointFn Function type that maps value_type (node) to Point.
+   * @tparam Map     std::map with the key_type satisfying the above.
+   *
+   * @post For all i in [@a first, @a last), node_map.count(*i) == 1.
+   *
+   * Uses color_function for color and position_function for position. It's OK
+   * to add a Node more than once. Second and subsequent adds update the
+   * existing node's position.
+   */
+  template <typename InputIterator,
+            typename ColorFn, typename PointFn, typename Map>
+  void add_nodes(InputIterator first, InputIterator last,
+                 ColorFn color_function, PointFn position_function,
+                 Map& node_map)
+  {
+    // Lock for data update
+    { safe_lock lock(mutex_);
+
+      for ( ; first != last; ++first) {
+        // Get node and record the index mapping
+        auto n = *first;
+        auto r = node_map.insert(typename Map::value_type(n,coords_.size()));
+        if (r.second) {   // new node was inserted
+          coords_.push_back(position_function(n));
+          colors_.push_back(color_function(n));
+        } else {          // node already exists and not updated
+          unsigned index = r.first->second;
+          coords_[index] = position_function(n);
+          colors_[index] = color_function(n);
+        }
+      }
+    }
+
+    request_render();
+  }
+
+  /** Add the edges in the range [first, last) to the display.
+   * @param[in] first,last Iterator range of edges
+   * @param[in] node_map Tracks node identities.
+   *
+   * @tparam InputIterator Iterator type over edges. An edge is a type
+   *     that provides:
+   *        using node_type = ...
+   *        node_type node1()
+   *        node_type node2()
+   *     where std::is_same<node_type, typename Map::key_type>::value.
+   *
+   * Edges whose endpoints weren't previously added to the node_map by
+   * add_nodes() (i.e. node_map.count(node) == 0) are ignored.
+   */
+  template <typename InputIterator, typename Map>
+  void add_edges(InputIterator first, InputIterator last, const Map& node_map)
+  {
+    // Lock for data update
+    { safe_lock lock(mutex_);
+
+      for ( ; first != last; ++first) {
+        auto edge = *first;
+        auto n1 = node_map.find(edge.node1());
+        auto n2 = node_map.find(edge.node2());
+        if (n1 != node_map.end() && n2 != node_map.end()) {
+          edges_.push_back(n1->second);
+          edges_.push_back(n2->second);
         }
       }
     }
