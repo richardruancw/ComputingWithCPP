@@ -35,9 +35,11 @@ class filter_iterator : private equality_comparable<filter_iterator<Pred,It>>
   using iterator_category = typename std::input_iterator_tag;
 
   // Constructor
-  filter_iterator(const Pred& p, const It& first, const It& last)
-      : p_(p), it_(first), end_(last) {
+  filter_iterator(const Pred& p, const It& first, const It& last) {
     // HW1 #4: YOUR CODE HERE
+      	it_ = first;
+      	end_ = last;
+      	p_ = p;
   }
 
   // HW1 #4: YOUR CODE HERE
@@ -45,6 +47,38 @@ class filter_iterator : private equality_comparable<filter_iterator<Pred,It>>
   // value_type operator*() const;
   // filter_iterator& operator++();
   // bool operator==(const self_type&) const;
+
+  /** Return the deference of the iterator
+   */
+  value_type operator*() const {
+  	return *it_;
+  }
+
+  /** Increment the filter_iterator forward
+   * @post if iter == end() then iter++ == end()
+   */
+  filter_iterator& operator++() {
+  	while(true) {
+  		++it_;
+  		if (p_(*it_) || it_ == end_) break;
+  	}
+  	return *this;
+  }
+
+  // Return true if two filter_iterator equal
+  bool operator==(const filter_iterator& other_iter) const {
+  	return it_ == other_iter.it_ && end_ == other_iter.end_;
+  }
+
+  // Return the begin of a filter_iterator
+  filter_iterator begin() {
+  	return *this;
+  }
+
+  // Return the end of a filter_iterator
+  filter_iterator end() {
+  	return filter_iterator(p_, end_, end_);
+  }
 
  private:
   Pred p_;
@@ -73,10 +107,10 @@ filter_iterator<Pred,Iter> make_filtered(const Iter& it, const Iter& end,
 // If you'd like you may create new nodes and tets files.
 
 /** Test predicate for HW1 #4 */
+template <typename NODE>
 struct SlicePredicate {
-  template <typename NODE>
   bool operator()(const NODE& n) {
-    return n.position().x < 0;
+    return n.position().x > -1;
   }
 };
 
@@ -121,6 +155,13 @@ int main(int argc, char** argv)
 
   // HW1 #4: YOUR CODE HERE
   // Use the filter_iterator to plot an induced subgraph.
+  SlicePredicate<NodeType> slicePre;
+  auto Nodeiter = make_filtered(graph.node_begin(), graph.node_end(), slicePre);
+
+  // Plot the nodes and edges using iterators
+  auto node_map = viewer.empty_node_map(graph); 
+  viewer.add_nodes(Nodeiter.begin(), Nodeiter.end(), node_map); 
+  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
 
   // Center the view and enter the event loop for interactivity
   viewer.center_view();

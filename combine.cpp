@@ -1,6 +1,6 @@
 /**
- * @file shortest_path.cpp
- * Test script for using our templated Graph to determine shortest paths.
+ * @file Combine.cpp
+ * Test script for viewing a subgraph from our Graph combing the plots in @file shortest_path.cpp
  *
  * @brief Reads in two files specified on the command line.
  * First file: 3D Points (one per line) defined by three doubles
@@ -8,8 +8,8 @@
  * list
  */
 
-#include <vector>
 #include <fstream>
+#include <iterator>
 
 #include "CME212/SFML_Viewer.hpp"
 #include "CME212/Util.hpp"
@@ -23,6 +23,95 @@ using GraphType = Graph<float>;
 using NodeType  = typename GraphType::node_type;
 using NodeIter  = typename GraphType::node_iterator;
 
+/** An iterator that skips over elements of another iterator based on whether
+ * those elements satisfy a predicate.
+ *
+ * Given an iterator range [@a first, @a last) and a predicate @a pred,
+ * this iterator models a filtered range such that all i with
+ * @a first <= i < @a last and @a pred(*i) appear in order of the original range.
+ */
+template <typename Pred, typename It>
+class filter_iterator : private equality_comparable<filter_iterator<Pred,It>>
+{
+ public:
+  // Get all of the iterator traits and make them our own
+  using value_type        = typename std::iterator_traits<It>::value_type;
+  using pointer           = typename std::iterator_traits<It>::pointer;
+  using reference         = typename std::iterator_traits<It>::reference;
+  using difference_type   = typename std::iterator_traits<It>::difference_type;
+  using iterator_category = typename std::input_iterator_tag;
+
+  // Constructor
+  filter_iterator(const Pred& p, const It& first, const It& last) {
+    // HW1 #4: YOUR CODE HERE
+      	it_ = first;
+      	end_ = last;
+      	p_ = p;
+  }
+
+  // HW1 #4: YOUR CODE HERE
+  // Supply definitions AND SPECIFICATIONS for:
+  // value_type operator*() const;
+  // filter_iterator& operator++();
+  // bool operator==(const self_type&) const;
+
+  value_type operator*() const {
+  	return *it_;
+  }
+
+  filter_iterator& operator++() {
+  	while(true) {
+  		++it_;
+  		if (p_(*it_) || it_ == end_) break;
+  	}
+  	return *this;
+  }
+
+  bool operator==(const filter_iterator& other_iter) const {
+  	return it_ == other_iter.it_ && end_ == other_iter.end_;
+  }
+
+  filter_iterator begin() {
+  	return *this;
+  }
+
+  filter_iterator end() {
+  	return filter_iterator(p_, end_, end_);
+  }
+
+ private:
+  Pred p_;
+  It it_;
+  It end_;
+};
+
+/** Helper function for constructing filter_iterators. This deduces the type of
+ * the predicate function and the iterator so the user doesn't have to write it.
+ * This also allows the use of lambda functions as predicates.
+ *
+ * Usage:
+ * // Construct an iterator that filters odd values out and keeps even values.
+ * std::vector<int> a = ...;
+ * auto it = make_filtered(a.begin(), a.end(), [](int k) {return k % 2 == 0;});
+ */
+template <typename Pred, typename Iter>
+filter_iterator<Pred,Iter> make_filtered(const Iter& it, const Iter& end,
+                                         const Pred& p) {
+  return filter_iterator<Pred,Iter>(p, it, end);
+}
+
+// HW1 #4: YOUR CODE HERE
+// Specify and write an interesting predicate on the nodes.
+// Explain what your predicate is intended to do and test it.
+// If you'd like you may create new nodes and tets files.
+
+/** Test predicate for HW1 #4 */
+template <typename NODE>
+struct SlicePredicate {
+  bool operator()(const NODE& n) {
+    return n.value() > 0.233;
+  }
+};
 
 /** Find the node with the minimum euclidean distance to a point.
  * @param g  The graph of nodes to search.
@@ -107,6 +196,9 @@ void shortest_path_lengths(GraphType& g, NodeType& root)
 }
 
 
+
+
+
 int main(int argc, char** argv)
 {
   // Check arguments
@@ -115,9 +207,13 @@ int main(int argc, char** argv)
     exit(1);
   }
 
+  // Define our types
+  using GraphType = Graph<float>;
+  using NodeType  = typename GraphType::node_type;
+
   // Construct a Graph
   GraphType graph;
-  std::vector<GraphType::node_type> nodes;
+  std::vector<NodeType> nodes;
 
   // Create a nodes_file from the first input argument
   std::ifstream nodes_file(argv[1]);
@@ -138,33 +234,31 @@ int main(int argc, char** argv)
   // Print out the stats
   std::cout << graph.num_nodes() << " " << graph.num_edges() << std::endl;
 
-
   // Launch the SFML_Viewer
   CME212::SFML_Viewer viewer;
 
-  // HW1 #3: YOUR CODE HERE
-  // Use nearest_node and shortest_path_lengths to set the node values
-  // Construct a Color functor and view with the SFML_Viewer
-
-  Point pp(-1, 0, 1);
+  
+  auto node_map = viewer.empty_node_map(graph); 
+  Point pp(5, -5, 1);
   NodeType nearest = *(nearest_node(graph, pp));
-
   shortest_path_lengths(graph, nearest);
   // Center the view and enter the event loop for interactivity
-
   struct MyNodeColor {
    CME212::Color operator()(const NodeType& node) const {
       return (CME212::Color::make_heat(node.value()));
     }
   };
-
   MyNodeColor headColor;
 
-  auto node_map = viewer.empty_node_map(graph); 
-  viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map); 
-  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
-  viewer.add_nodes(graph.node_begin(), graph.node_end(), headColor, node_map);
 
+  SlicePredicate<NodeType> slicePre;
+  auto Nodeiter = make_filtered(graph.node_begin(), graph.node_end(), slicePre);
+
+  viewer.add_nodes(Nodeiter.begin(), Nodeiter.end(), node_map); 
+  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
+  viewer.add_nodes(Nodeiter.begin(), Nodeiter.end(), headColor, node_map);
+
+  // Center the view and enter the event loop for interactivity
   viewer.center_view();
   viewer.event_loop();
 

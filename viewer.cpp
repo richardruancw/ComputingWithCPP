@@ -30,7 +30,7 @@ int main(int argc, char** argv)
   }
 
   // Define our types
-  using GraphType = Graph;
+  using GraphType = Graph<int>;
   using NodeType  = typename GraphType::node_type;
 
 
@@ -41,31 +41,40 @@ int main(int argc, char** argv)
   // Create a nodes_file from the first input argument
   std::ifstream nodes_file(argv[1]);
   // Interpret each line of the nodes_file as a 3D Point and add to the Graph
+
+ 
   Point p;
   while (CME212::getline_parsed(nodes_file, p))
     nodes.push_back(graph.add_node(p));
+  
 
   // Create a tets_file from the second input argument
   std::ifstream tets_file(argv[2]);
   // Interpret each line of the tets_file as four ints which refer to nodes
+
+// Print number of nodes and edges
+  std::cout << graph.num_nodes() << " " << graph.num_edges() << std::endl;
+  
   std::array<int,4> t;
   while (CME212::getline_parsed(tets_file, t))
     for (unsigned i = 1; i < t.size(); ++i)
-      for (unsigned j = 0; j < i; ++j)
+      for (unsigned j = 0; j < i; ++j) {
         graph.add_edge(nodes[t[i]], nodes[t[j]]);
-
+      }
+        
 
   // Print number of nodes and edges
   std::cout << graph.num_nodes() << " " << graph.num_edges() << std::endl;
 
+ // graph.debug();
 
   // Launch a viewer
   CME212::SFML_Viewer viewer;
-
-  //viewer.draw_graph_nodes(graph);  // Draw only the nodes
-  viewer.draw_graph(graph);      // Draw the nodes and edges
-
-  // Center the view and enter the event loop for interactivity
+  
+  auto node_map = viewer.empty_node_map(graph); 
+  viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map); 
+  viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
+  //Center the view and enter the event loop for interactivity
   viewer.center_view();
   viewer.event_loop();
 
