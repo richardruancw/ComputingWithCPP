@@ -67,20 +67,20 @@ NodeIter nearest_node(const GraphType& g, const Point& point)
  */
 
 
-void shortest_path_lengths(GraphType& g, NodeType& root)
+int shortest_path_lengths(GraphType& g, NodeType& root)
 {
-  // HW1 #3: YOUR CODE HERE
-  // initialize all node's value to 0
-  for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
-    (*ni).value() = 0;
-  }
-
-  // Run BFS
-  std::queue<NodeType> nodeQueue;
-  root.value() = 0.001;
-  nodeQueue.push(root);
+  	// HW1 #3: YOUR CODE HERE
+  	// initialize all node's value to 0
+  	for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
+    	(*ni).value() = -1;
+  	}
+  	float maximum = 0;
+  	// Run BFS
+  	std::queue<NodeType> nodeQueue;
+  	root.value() = 0;
+  	nodeQueue.push(root);
   
-  while(!nodeQueue.empty()) {
+  	while(!nodeQueue.empty()) {
     NodeType& curr = nodeQueue.front();
     nodeQueue.pop();
     for (auto ii = curr.edge_begin(); ii != curr.edge_end(); ++ii) {
@@ -91,19 +91,33 @@ void shortest_path_lengths(GraphType& g, NodeType& root)
         temp = (*ii).node1();
       }
       // Don't revisit node
-      if (temp.value() == 0) {
+      if (temp.value() < 0) {
         temp.value() = curr.value() + 1;
+        maximum = std::max(temp.value(), maximum);
         nodeQueue.push(temp);
       }
     }
-  }
-  float maximum = 0;
-   for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
-   maximum = std::max((*ni).value(), maximum);
   } 
-  for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
-    (*ni).value() = (*ni).value() / maximum;
-  }   
+  	return (int)(maximum); 
+}
+
+/** Normalize a graph's node's value 
+ * @param[in,out] g     Input graph
+ * @param[in,out] max The normalizing factor
+ * @return The maximum path length found.
+ *
+ * @post root.value() == (old root.value() / max) if old root.value() > 0
+ * @post Graph has modified node values by dividing the normalizing factor to non-negative values.
+ * @post Graph nodes that are unreachable from the root have value() == -1.
+ *
+ */
+void normalize_node_value(GraphType& g, int max) {
+	float maximum = max + 0.0;
+  	for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
+  		if ((*ni).value() > 0) {
+    		(*ni).value() = (*ni).value() / maximum;
+		}
+  	}  
 }
 
 
@@ -148,8 +162,10 @@ int main(int argc, char** argv)
 
   Point pp(-1, 0, 1);
   NodeType nearest = *(nearest_node(graph, pp));
-
-  shortest_path_lengths(graph, nearest);
+  // Update the path length
+  int maximum = shortest_path_lengths(graph, nearest);
+  // Normalize the value in nodes
+  normalize_node_value(graph, maximum);
   // Center the view and enter the event loop for interactivity
 
   struct MyNodeColor {

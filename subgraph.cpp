@@ -48,7 +48,7 @@ class filter_iterator : private equality_comparable<filter_iterator<Pred,It>>
   // filter_iterator& operator++();
   // bool operator==(const self_type&) const;
 
-  /** Return the deference of the iterator
+  /** Return the dereference of the iterator
    */
   value_type operator*() const {
   	return *it_;
@@ -107,6 +107,8 @@ filter_iterator<Pred,Iter> make_filtered(const Iter& it, const Iter& end,
 // If you'd like you may create new nodes and tets files.
 
 /** Test predicate for HW1 #4 */
+
+// See the @file combine.cpp, in which I use the length to the root node to slice nodes.
 template <typename NODE>
 struct SlicePredicate {
   bool operator()(const NODE& n) {

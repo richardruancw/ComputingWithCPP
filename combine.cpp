@@ -55,10 +55,15 @@ class filter_iterator : private equality_comparable<filter_iterator<Pred,It>>
   // filter_iterator& operator++();
   // bool operator==(const self_type&) const;
 
+    /** Return the dereference of the iterator
+   */
   value_type operator*() const {
   	return *it_;
   }
 
+  /** Increment the filter_iterator forward
+   * @post if iter == end() then iter++ == end()
+   */
   filter_iterator& operator++() {
   	while(true) {
   		++it_;
@@ -67,14 +72,17 @@ class filter_iterator : private equality_comparable<filter_iterator<Pred,It>>
   	return *this;
   }
 
+  // Return true if two filter_iterator equal
   bool operator==(const filter_iterator& other_iter) const {
   	return it_ == other_iter.it_ && end_ == other_iter.end_;
   }
 
+  // Return the begin of a filter_iterator
   filter_iterator begin() {
   	return *this;
   }
 
+  // Return the end of a filter_iterator
   filter_iterator end() {
   	return filter_iterator(p_, end_, end_);
   }
@@ -105,11 +113,13 @@ filter_iterator<Pred,Iter> make_filtered(const Iter& it, const Iter& end,
 // Explain what your predicate is intended to do and test it.
 // If you'd like you may create new nodes and tets files.
 
-/** Test predicate for HW1 #4 */
+/** Return true when the node.value() > than 0.222. This predicate functor
+ *  will discard the nodes near the root points
+ */
 template <typename NODE>
 struct SlicePredicate {
   bool operator()(const NODE& n) {
-    return n.value() > 0.233;
+    return n.value() > 0.222;
   }
 };
 
@@ -156,20 +166,20 @@ NodeIter nearest_node(const GraphType& g, const Point& point)
  */
 
 
-void shortest_path_lengths(GraphType& g, NodeType& root)
+int shortest_path_lengths(GraphType& g, NodeType& root)
 {
-  // HW1 #3: YOUR CODE HERE
-  // initialize all node's value to 0
-  for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
-    (*ni).value() = 0;
-  }
-
-  // Run BFS
-  std::queue<NodeType> nodeQueue;
-  root.value() = 0.001;
-  nodeQueue.push(root);
+  	// HW1 #3: YOUR CODE HERE
+  	// initialize all node's value to 0
+  	for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
+    	(*ni).value() = -1;
+  	}
+  	float maximum = 0;
+  	// Run BFS
+  	std::queue<NodeType> nodeQueue;
+  	root.value() = 0;
+  	nodeQueue.push(root);
   
-  while(!nodeQueue.empty()) {
+  	while(!nodeQueue.empty()) {
     NodeType& curr = nodeQueue.front();
     nodeQueue.pop();
     for (auto ii = curr.edge_begin(); ii != curr.edge_end(); ++ii) {
@@ -180,23 +190,34 @@ void shortest_path_lengths(GraphType& g, NodeType& root)
         temp = (*ii).node1();
       }
       // Don't revisit node
-      if (temp.value() == 0) {
+      if (temp.value() < 0) {
         temp.value() = curr.value() + 1;
+        maximum = std::max(temp.value(), maximum);
         nodeQueue.push(temp);
       }
     }
-  }
-  float maximum = 0;
-   for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
-   maximum = std::max((*ni).value(), maximum);
   } 
-  for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
-    (*ni).value() = (*ni).value() / maximum;
-  }   
+  	return (int)(maximum); 
 }
 
-
-
+/** Normalize a graph's node's value 
+ * @param[in,out] g     Input graph
+ * @param[in,out] max The normalizing factor
+ * @return The maximum path length found.
+ *
+ * @post root.value() == (old root.value() / max) if old root.value() > 0
+ * @post Graph has modified node values by dividing the normalizing factor to non-negative values.
+ * @post Graph nodes that are unreachable from the root have value() == -1.
+ *
+ */
+void normalize_node_value(GraphType& g, int max) {
+	float maximum = max + 0.0;
+  	for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
+  		if ((*ni).value() > 0) {
+    		(*ni).value() = (*ni).value() / maximum;
+		}
+  	}  
+}
 
 
 int main(int argc, char** argv)
@@ -239,9 +260,13 @@ int main(int argc, char** argv)
 
   
   auto node_map = viewer.empty_node_map(graph); 
-  Point pp(5, -5, 1);
+
+  Point pp(10, 10, 10);
   NodeType nearest = *(nearest_node(graph, pp));
-  shortest_path_lengths(graph, nearest);
+  // Update the path length
+  int maximum = shortest_path_lengths(graph, nearest);
+  // Normalize the value in nodes
+  normalize_node_value(graph, maximum);
   // Center the view and enter the event loop for interactivity
   struct MyNodeColor {
    CME212::Color operator()(const NodeType& node) const {
@@ -249,7 +274,6 @@ int main(int argc, char** argv)
     }
   };
   MyNodeColor headColor;
-
 
   SlicePredicate<NodeType> slicePre;
   auto Nodeiter = make_filtered(graph.node_begin(), graph.node_end(), slicePre);
