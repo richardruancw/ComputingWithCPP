@@ -155,8 +155,7 @@ class Graph {
 
 
     /** Test whether this node and @a n are equal.
-     *
-     * Equal nodes have the same graph and the same index.
+     * @return True if two nodes have the same graph and the same index.
      */
     bool operator==(const Node& n) const {
       // HW0: YOUR CODE HERE
@@ -188,6 +187,12 @@ class Graph {
     // i.e. Graph needs a way to construct valid Node objects
     Graph* graph_;
     size_type uid_;
+
+    /** Return a node object given the access to the graph and position
+     * @pre 0 <= @a uid < num_nodes()
+     * @post the returned node might change the value of the node in graph.
+     * Complexity: O(1)
+     */
     Node(const Graph* graph, size_type uid)
     : graph_(const_cast<Graph*>(graph)), uid_(uid){
     }
@@ -294,17 +299,17 @@ class Graph {
      * std::map<>. It need not have any interpretive meaning.
      */
     bool operator<(const Edge& e) const {
-  size_type min_a = std::min(nid_a_, nid_b_);
-  size_type max_a = std::max(nid_a_, nid_b_);
-  size_type min_b = std::min(e.nid_a_, e.nid_b_);
-  size_type max_b = std::max(e.nid_a_, e.nid_b_);
-  if (min_a < min_b) {
-    return true;
-  } else if (min_a == min_b && max_a < max_b) {
-    return true;
-  } else {
-    return false;
-  }     
+	  size_type min_a = std::min(nid_a_, nid_b_);
+	  size_type max_a = std::max(nid_a_, nid_b_);
+	  size_type min_b = std::min(e.nid_a_, e.nid_b_);
+	  size_type max_b = std::max(e.nid_a_, e.nid_b_);
+	  if (min_a < min_b) {
+	    return true;
+	  } else if (min_a == min_b && max_a < max_b) {
+	    return true;
+	  } else {
+	    return false;
+	  }     
     }
 
    private:
@@ -576,6 +581,13 @@ class Graph {
     EdgeIterator() {
     }
 
+    /** Return an EdgeIterator given the access to the graph, the position, the position
+     *  of the root node and the position of the end node
+     * @pre 0 <= @a position < num_edges()
+     * @pre 0 <= @a root_count < num_nodes()
+     * @pre 0<= @a end_count < number of nodes root links to
+     * @post return an EdgeIterator that might change the value of the graph.
+     */
     EdgeIterator(const Graph* graph, size_type position,
     			size_type root_count, size_type end_count) {
 
@@ -592,6 +604,7 @@ class Graph {
      * @pre The graph strucutre should not be modified after the creation of iterator and
      * before using the iteraot.
      * @post The graph does not change
+     * Complexity: O(1)
      */
     Edge operator*() const{
     	return Edge(graph_, root_count_, graph_->adj_list[root_count_][end_count_]);
@@ -649,9 +662,13 @@ class Graph {
    private:
     friend class Graph;
     // HW1 #5: YOUR CODE HERE
+    // Acess to the graph object
     Graph* graph_;
+    // The counter
     size_type position_;
+    // Inner index for the node
     size_type root_count_;
+    // Inner index for the end nodes that root node links to
     size_type end_count_;
   };
 
