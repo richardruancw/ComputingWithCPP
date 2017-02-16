@@ -36,6 +36,9 @@ using NodeIter  = typename GraphType::node_iterator;
  */
 
 
+//--comment
+//--use min_element & lambda function
+//--START
 NodeIter nearest_node(const GraphType& g, const Point& point)
 {
   // HW1 #3: YOUR CODE HERE
@@ -50,6 +53,7 @@ NodeIter nearest_node(const GraphType& g, const Point& point)
   }
   return res;
 }
+//--END
 
 /** Update a graph with the shortest path lengths from a root node.
  * @param[in,out] g     Input graph
@@ -70,10 +74,14 @@ NodeIter nearest_node(const GraphType& g, const Point& point)
 void shortest_path_lengths(GraphType& g, NodeType& root)
 {
   // HW1 #3: YOUR CODE HERE
+  //--comment
+  //--default vaule is -1 for unreachable nodes
+  //--START
   // initialize all node's value to 0
   for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
     (*ni).value() = 0;
   }
+  //--END
 
   // Run BFS
   std::queue<NodeType> nodeQueue;

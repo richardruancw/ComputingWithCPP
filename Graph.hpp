@@ -602,6 +602,9 @@ class Graph {
      *  @pre This iterator is in the range of graph.edge_begin() and graph.edge_end()
      *  @post new edgeIterator = old ++edgeIterator;
      */
+    //--comment
+    //--over-complicated
+    //--START
     EdgeIterator& operator++() { 
     	bool jobDone = false;
     	// Have not yet reached the end of the adj_list in the next step
@@ -637,6 +640,7 @@ class Graph {
     	position_++;
     	return *this;
     }
+    //--END
 
     /** Test whether two EdgeIterator equal
      *  @pre the graph structure have not been changed

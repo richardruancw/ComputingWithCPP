@@ -101,11 +101,14 @@ filter_iterator<Pred,Iter> make_filtered(const Iter& it, const Iter& end,
   return filter_iterator<Pred,Iter>(p, it, end);
 }
 
+//--comment
+//--didn't create extra predicate
+//--START
 // HW1 #4: YOUR CODE HERE
 // Specify and write an interesting predicate on the nodes.
 // Explain what your predicate is intended to do and test it.
 // If you'd like you may create new nodes and tets files.
-
+//--END
 /** Test predicate for HW1 #4 */
 template <typename NODE>
 struct SlicePredicate {
@@ -169,3 +172,5 @@ int main(int argc, char** argv)
 
   return 0;
 }
+
+//--grade8
