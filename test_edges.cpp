@@ -69,6 +69,7 @@ int main()
 
 
   sf_print((g.remove_node(g.node(1)), true), "Removing Node ...");
+
   sf_print(g.num_nodes() == 1, "Graph has 1 node");
   sf_print(g.num_edges() == 0, "Edge removed b/c of Node");
 
@@ -143,7 +144,6 @@ int main()
         ++count_edges;
     }
   }
-
   sf_print(count_edges == g.num_edges(), "Edge count agrees");
 
   std::cerr << "Clearing...";

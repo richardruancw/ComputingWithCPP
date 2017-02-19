@@ -19,7 +19,7 @@
 #include "Graph.hpp"
 
 // Define our types
-using GraphType = Graph<float>;
+using GraphType = Graph<float, int>;
 using NodeType  = typename GraphType::node_type;
 using NodeIter  = typename GraphType::node_iterator;
 
@@ -229,7 +229,7 @@ int main(int argc, char** argv)
   }
 
   // Define our types
-  using GraphType = Graph<float>;
+  //using GraphType = Graph<float, int>;
   using NodeType  = typename GraphType::node_type;
 
   // Construct a Graph

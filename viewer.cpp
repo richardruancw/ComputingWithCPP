@@ -30,7 +30,7 @@ int main(int argc, char** argv)
   }
 
   // Define our types
-  using GraphType = Graph<int>;
+  using GraphType = Graph<int, int>;
   using NodeType  = typename GraphType::node_type;
 
 
