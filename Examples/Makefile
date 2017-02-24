@@ -6,3 +6,4 @@ include ../Makefile.inc
 
 copy_dispatch.o: INCLUDES += -I../
 distance_dispatch.o: INCLUDES += -I../
+test_metrics.o: INCLUDES += -I../
