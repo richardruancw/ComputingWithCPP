@@ -271,7 +271,7 @@ class Graph {
     index_to_uid_.push_back(node_list_.size() - 1);
 
 
-    return Node(this, num_nodes() - 1);        
+    return Node(this, index_to_uid_[index_to_uid_.size() - 1]);        
   }
 
   /** Determine if a Node belongs to this Graph
