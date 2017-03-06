@@ -791,7 +791,9 @@ class Graph {
     if (inci == (*root).edge_end()) {++e_it;}
     return e_it;
    }
- 
+//--comment
+//--Great specs for your remove functions!
+//--END
   /** Remove the given node and the edges that link to it
    *  @return If has_node(@a n) return 1 else return 0
    *  @post 
