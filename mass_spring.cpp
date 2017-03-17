@@ -8,6 +8,9 @@
  * list
  */
 
+#include <thrust/for_each.h>
+#include <thrust/system/omp/execution_policy.h>
+
 #include <fstream>
 #include <chrono>
 #include <thread>
@@ -19,14 +22,16 @@
 #include "CME212/Util.hpp"
 #include "CME212/Color.hpp"
 #include "CME212/Point.hpp"
-
 #include "Graph.hpp"
+#include "MortonCoder.hpp"
+#include "SpaceSearcher.hpp"
 
 
 // Gravity in meters/sec^2
-static constexpr double grav = 9.81;
-static constexpr double K = 100;
+double grav = 9.81;
+double K = 100;
 double C = 0;
+
 
 /** Custom structure of data to store with Nodes */
 struct NodeData {
@@ -47,6 +52,33 @@ using GraphType = Graph<NodeData, EdgeData>;
 using Node = typename GraphType::node_type;
 using Edge = typename GraphType::edge_type;
 
+struct update_position {
+	//__host__ __device__
+  update_position(double t, double dt): t_(t), dt_(dt) {}
+  void operator()(Node n) {
+    n.position() += n.value().vel * dt_;
+  }
+  double t_;
+  double dt_;
+};
+
+template<typename F>
+struct update_velocity {
+	//__host__ __device__
+  update_velocity(const F &force, double t, double dt):
+  force_(force), t_(t), dt_(dt) {}
+
+  void operator()(Node n) {
+  	if (n.position() == Point(0,0,0) || n.position() == Point(1,0,0)) {
+  		return;
+  	}
+    n.value().vel += force_(n, t_) * (dt_ / n.value().mass);
+  }
+  double t_;
+  double dt_;
+  const F & force_;
+};
+
 /** Change a graph's nodes according to a step of the symplectic Euler
  *    method with the given node force.
  * @param[in,out] g      Graph
@@ -63,27 +95,14 @@ using Edge = typename GraphType::edge_type;
  */
 template <typename G, typename F, typename C>
 double symp_euler_step(G& g, double t, double dt, F force, C constraint) {
-  // Compute the t+dt position
-  for (auto it = g.node_begin(); it != g.node_end(); ++it) {
-    auto n = *it;
-
-    // Update the position of the node according to its velocity
-    // x^{n+1} = x^{n} + v^{n} * dt
-    n.position() += n.value().vel * dt;
-  }
-
-  // Apply the constrain to the nodes at time t
+  
+  auto position_updater = update_position(t, dt);
+  auto velocity_updater = update_velocity<F>(force, t, dt);
+  thrust::for_each(thrust::omp::par, g.node_begin(), g.node_end(), position_updater);
+  //thrust::for_each(thrust::seq, g.node_begin(), g.node_end(), position_updater);
   constraint(g, t);
-
-  // Compute the t+dt velocity
-  for (auto it = g.node_begin(); it != g.node_end(); ++it) {
-    auto n = *it;
-    if (n.position() == Point(0,0,0) || n.position() == Point(1,0,0)) {
-    	continue;
-    }
-    // v^{n+1} = v^{n} + F(x^{n+1},t) * dt / m
-    n.value().vel += force(n, t) * (dt / n.value().mass);
-  }
+  //thrust::for_each(thrust::seq, g.node_begin(), g.node_end(), velocity_updater);
+  thrust::for_each(thrust::omp::par, g.node_begin(), g.node_end(), velocity_updater);
 
   return t + dt;
 }
@@ -170,6 +189,9 @@ struct evaluate_all_forces<N, N, Tuple> {
   }
 };
 
+
+
+
 // Froce function that combines given input force function
 template<typename...Forces>
 struct combined_force {
@@ -238,6 +260,70 @@ struct SphereRemoveConstraint {
 };
 
 
+struct SelfCollisionConstraint {
+  using searcher_type =  SpaceSearcher<Node>;
+  struct N2P {
+    Point operator()(const Node& n) { return n.position(); }
+  };
+
+  SelfCollisionConstraint (const Box3D & large_bb, GraphType & graph):
+  searcher_(large_bb, graph.node_begin(), graph.node_end(), N2P()) {
+  }
+
+  template<typename G>
+  void operator()(G &g, double t) {
+    for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
+      // Find its closet neighbor, and build a box
+      double radius = std::numeric_limits<double>::max();
+      auto n = *ni;
+      radius = std::accumulate(n.edge_begin(), n.edge_end(), radius, 
+        [n] (double pre, Edge e) {  
+          return std::min(pre, normSq(e.node2().position() - e.node2().position()));} );
+      radius *= 0.8;
+      Box3D bb(n.position() + radius, n.position() - radius);
+
+      // Itear it's srounding area
+      for (auto iter = searcher_.begin(bb); iter != searcher_.end(bb); ++iter) {
+        auto n2 = *iter;
+        Point r = n.position() - n2.position();
+        if (n2 != n) {
+          n.value().vel -= (dot(r, n.value().vel) / normSq(r)) * r;
+        }
+      }
+
+    }
+
+  }
+  const searcher_type searcher_;
+};
+
+
+struct NaiveSelfCollisionConstraint {
+  template<typename G>
+  void operator()(G &g, double t) {
+    for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
+      // Find its closet neighbor, and build a box
+      double radius = std::numeric_limits<double>::max();
+      auto n = *ni;
+      radius = std::accumulate(n.edge_begin(), n.edge_end(), radius, 
+        [n] (double pre, Edge e) {  
+          return std::min(pre, normSq(e.node2().position() - e.node2().position()));} );
+      radius *= 0.8;
+      Box3D bb(n.position() + radius, n.position() - radius);
+      // Itear it's srounding area
+      for (auto n2i = g.node_begin(); n2i != g.node_end(); ++n2i) {
+        auto n2 = *n2i;
+        Point r = n.position() - n2.position();
+        if (n2 != n) {
+          n.value().vel -= (dot(r, n.value().vel) / normSq(r)) * r;
+        }
+      }
+
+    }
+
+  }
+};
+
 template <std::size_t N, std::size_t I, typename Tuple>
 struct evaluate_all_constraints
 {
@@ -273,6 +359,7 @@ template<typename...Constraints>
 combined_constraints<typename std::decay<Constraints>::type...> make_combined_constraints(Constraints &&... constraints) {
   return combined_constraints<typename std::decay<Constraints>::type...>(std::forward<Constraints>(constraints)...);
 }
+
 
 int main(int argc, char** argv) {
   // Check arguments
@@ -323,6 +410,7 @@ int main(int argc, char** argv) {
   }
   // setup C
   C = 1.0 / graph.num_nodes();
+  K = 100.0 / graph.num_nodes();
 
   // Print out the stats
   std::cout << graph.num_nodes() << " " << graph.num_edges() << std::endl;
@@ -342,29 +430,40 @@ int main(int argc, char** argv) {
   auto sim_thread = std::thread([&](){
 
       // Begin the mass-spring simulation
-      double dt = 0.0005;
+      double dt = 1.0 / graph.num_nodes();;
       double t_start = 0;
-      double t_end = 5.0;
+      double t_end = 5;
       auto testForce = make_combined_force(GravityForce(), MassSpringForce(), DampingForce());
-      auto testCons = make_combined_constraints(PlainConstraint(), SphereConstraint(), SphereRemoveConstraint());
+
+      Box3D bb(Point(-10,-10,-10), Point(10, 10,10));
+      auto selfcollosion = SelfCollisionConstraint(bb, graph);
+      auto testCons = make_combined_constraints(PlainConstraint(), SphereConstraint(), 
+      selfcollosion); //NaiveSelfCollisionConstraint()
+
+      CME212::Clock clock;
+      std::vector<double> time_record_list;
 
       for (double t = t_start; t < t_end && !interrupt_sim_thread; t += dt) {
         //symp_euler_step(graph, t, dt, Problem1Force());
+      	clock.start();
       	symp_euler_step(graph, t, dt, testForce, testCons);
+		    time_record_list.push_back(clock.seconds());
 
         viewer.clear();
         node_map.clear();
         // Update viewer with nodes’ new positions and new edges
         viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map);
         viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
-
         viewer.set_label(t);
+
 
         // These lines slow down the animation for small graphs, like grid0_*.
         // Feel free to remove them or tweak the constants.
         if (graph.size() < 100)
           std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
+      double sum = std::accumulate(time_record_list.begin(), time_record_list.end(), double(0));
+      std::cout << "The average time cost for each update is: " << sum / time_record_list.size()  << std::endl;
 
     });  // simulation thread
 

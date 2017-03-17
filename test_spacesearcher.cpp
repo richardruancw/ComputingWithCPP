@@ -78,6 +78,5 @@ int main()
   viewer.add_edges(bb_graph.edge_begin(), bb_graph.edge_end(), node_map);
 
   viewer.center_view();
-
   viewer.event_loop();
 }

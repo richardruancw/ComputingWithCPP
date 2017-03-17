@@ -22,8 +22,11 @@ namespace detail {
  *   where each A,...,J is the corresponding bit from @a x
  */
 inline uint32_t spread_bits(uint32_t x) {
-  // HW4: YOUR CODE HERE
-  return x;
+  uint32_t y = 0;
+  for (int i = 0; i < 10; i++) {
+        y |= (x & 1U << i) << (2*i);
+  }
+  return y;
 }
 
 /** Compacts every third bit in a 32-bit integer to the lowest 10-bits.
@@ -33,8 +36,11 @@ inline uint32_t spread_bits(uint32_t x) {
  *   where each A,...,J is the corresponding bit from @a x
  */
 inline uint32_t compact_bits(uint32_t x) {
-  // HW4: YOUR CODE HERE
-  return x;
+    int32_t y = 0;
+    for (int i = 0; i < 10; i++) {
+        y |= (x & (1U << i) << (2*i)) >> (2*i);
+    }
+  return y;
 }
 
 /** Smears the bits in c into the low bits by steps of one
@@ -103,7 +109,7 @@ class MortonCoder
 
   // Using a 32-bit unsigned int for the code_type
   // means we can only resolve 10 3D levels
-  static_assert(L >= 1 && L <= sizeof(code_type)*4/3, "L (LEVELS) must fit into code_type");
+  static_assert(L >= 1 && L <= sizeof(code_type)*8/3, "L (LEVELS) must fit into code_type");
 
   /** The number of bits per dimension [octree subdivisions]. #cells = 8^L. */
   static constexpr int levels = L;
@@ -236,5 +242,6 @@ class MortonCoder
                  detail::compact_bits(c >> 2));
   }
 };
+
 
 #endif

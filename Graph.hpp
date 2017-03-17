@@ -10,6 +10,8 @@
 #include <cassert>
 #include <unordered_set>
 #include <iostream>
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/iterator/transform_iterator.h>
 
 #include "CME212/Util.hpp"
 #include "CME212/Point.hpp"
@@ -45,9 +47,11 @@ class Graph {
   using edge_type = Edge;
 
   /** Type of node iterators, which iterate over all graph nodes. */
-  class NodeIterator;
+  //class NodeIterator;
   /** Synonym for NodeIterator */
-  using node_iterator = NodeIterator;
+  //struct NodeIterator;
+  //using node_iterator = NodeIterator;
+
 
   /** Type of edge iterators, which iterate over all graph edges. */
   class EdgeIterator;
@@ -486,88 +490,24 @@ class Graph {
     num_of_edges_ = 0;
   }
 
-  //
-  // Node Iterator
-  //
-
-  /** @class Graph::NodeIterator
-   * @brief Iterator class for nodes. A forward iterator. */
-  class NodeIterator : private totally_ordered<NodeIterator>{
-   public:
-    // These type definitions let us use STL's iterator_traits.
-    using value_type        = Node;                     // Element type
-    using pointer           = Node*;                    // Pointers to elements
-    using reference         = Node&;                    // Reference to elements
-    using difference_type   = std::ptrdiff_t;           // Signed difference
-    using iterator_category = std::input_iterator_tag;  // Weak Category, Proxy
-
-    /** Construct an invalid NodeIterator. */
-    NodeIterator() {
+  struct Uid2Node {
+    Node operator()(uid_type uid) const {
+      return Node(g_, uid);
     }
-
-    NodeIterator(const Graph* graph, size_type pos) {
-    	graph_ = const_cast<Graph*> (graph);
-    	position_ = pos;
-    }
-
-    // HW1 #2: YOUR CODE HERE
-    // Supply definitions AND SPECIFICATIONS for:
-    // Node operator*() const
-    // NodeIterator& operator++()
-    // bool operator==(const NodeIterator&) const
-
-
-    /** Dereference operator for this iterator
-     *  @ pre The nodes of the graph should not be changed after the creation of
-     *  this iterator.
-     */
-    Node operator*() const {
-    	return Node(graph_, graph_->index_to_uid_[position_]);
-    }
-
-    /** Forward operator for this iterator
-     *  @pre The iterator != g.node_end()
-     *  @ post @a position increase by one
-     */
-    NodeIterator& operator++() {
-    	//std::cout << "NodeIterator++ called!!" << std::endl;
-    	position_++;
-    	return *this;
-    }
-
-    // Return true if two NodeIterator equalsS
-    bool operator==(const NodeIterator& inputIter) const {
-    	return inputIter.graph_ == graph_ && inputIter.position_ == position_;
-    }
-
-   private:
-    friend class Graph;
-    // HW1 #2: YOUR CODE HERE
-
-    Graph* graph_;
-    size_type position_;
-    uid_type uid_;
+    const graph_type* g_;
   };
 
-  // HW1 #2: YOUR CODE HERE
+  using node_iterator = thrust::transform_iterator<Uid2Node , std::vector<uid_type>::const_iterator, Node>;
+
     // Return the begin of node iterator
-     node_iterator node_begin() {
-     	return NodeIterator(this, uid_type(0));
-     }
-    // Return the begin of node iterator
-     node_iterator node_begin() const{
-     	return NodeIterator(this, uid_type(0));
+  node_iterator node_begin() const{
+      return node_iterator(index_to_uid_.begin(), Uid2Node{this});
      }
 
-    // Return the end of node iterator
-     node_iterator node_end() {
-     	return NodeIterator(this, uid_type(index_to_uid_.size()));
-     }
-
-    // Return the end of node iterator
-     node_iterator node_end() const{
-     	return NodeIterator(this, uid_type(index_to_uid_.size()));
-     }
+  // Return the end of node iterator
+   node_iterator node_end() const{
+    return node_iterator(index_to_uid_.end(), Uid2Node{this});
+   }
 
   //
   // Incident Iterator

@@ -3,6 +3,12 @@
  * @brief Define the SpaceSearcher class for making efficient spatial searches.
  */
 
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/system/omp/execution_policy.h>
+#include <thrust/iterator/transform_iterator.h>
+#include <thrust/tuple.h>
+#include <thrust/sort.h>
+
 #include "CME212/Util.hpp"
 #include "CME212/Point.hpp"
 #include "CME212/BoundingBox.hpp"
@@ -52,6 +58,7 @@ class SpaceSearcher
   /** Synonym for NeighborhoodIterator */
   using iterator       = NeighborhoodIterator;
   using const_iterator = NeighborhoodIterator;
+  using IteratorTuple  = thrust::tuple<code_type, value_type>;
 
  public:
 
@@ -59,6 +66,30 @@ class SpaceSearcher
   // CONSTRUCTOR //
   /////////////////
 
+
+  /** Functior transform a point to its morton code*/
+  struct P2C {
+    P2C(const Box3D &bb): mc_p2c_(bb) {}
+    code_type operator()(const Point& p) const {
+      return mc_p2c_.code(p);
+    }
+    MortonCoderType mc_p2c_;
+  };
+
+  /** Helper function which helps initialize the z_data_ vector in parallel */
+  template <typename TIter, typename PointIter>
+  void MordtonListBuilder(const Box3D & bb, TIter tfirst, TIter tlast,
+                PointIter pfirst, PointIter plast) {
+    P2C p2c(bb);
+
+    auto cfirst = thrust::make_transform_iterator(pfirst, p2c);
+    auto clast = thrust::make_transform_iterator(plast, p2c);
+
+    auto iter_tuper_begin = thrust::make_zip_iterator(thrust::make_tuple(cfirst, tfirst));
+    auto iter_tuper_end = thrust::make_zip_iterator(thrust::make_tuple(clast, tlast));
+    z_data_ = std::vector<morton_pair>(iter_tuper_begin, iter_tuper_end);
+    thrust::sort(thrust::omp::par, z_data_.begin(), z_data_.end());
+  }
   /** @brief SpaceSearcher Constructor.
    *
    * For a range of data items of type @a T given by [@a first, @a last)
@@ -80,9 +111,13 @@ class SpaceSearcher
    */
   template <typename TIter, typename T2Point>
   SpaceSearcher(const Box3D& bb,
-                TIter first, TIter last, T2Point t2p) {
-    // HW4: YOUR CODE HERE
+                TIter tfirst, TIter tlast, T2Point t2p):mc_(bb) {
+    auto pfirst = thrust::make_transform_iterator(tfirst, t2p);
+    auto plast = thrust::make_transform_iterator(tlast, t2p);
+    MordtonListBuilder(bb, tfirst, tlast, pfirst, plast);
   }
+    // HW4: YOUR CODE HERE
+
 
   /** @brief SpaceSearcher Constructor.
    *
@@ -107,8 +142,9 @@ class SpaceSearcher
   template <typename TIter, typename PointIter>
   SpaceSearcher(const Box3D& bb,
                 TIter tfirst, TIter tlast,
-                PointIter pfirst, PointIter plast) {
+                PointIter pfirst, PointIter plast): mc_(bb) {
     // HW4: YOUR CODE HERE
+    MordtonListBuilder(bb, tfirst, tlast, pfirst, plast);
   }
 
   ///////////////
@@ -214,6 +250,8 @@ class SpaceSearcher
     // Cast operator to treat a morton_pair as a code_type in std::algorithms
     operator const code_type&() const { return code_; }
     // HW4: YOUR CODE HERE
+    morton_pair(const thrust::tuple<code_type,value_type> & t)
+    : code_(thrust::get<0>(t)), value_(thrust::get<1>(t)) {}
   };
 
   // Pairs of Morton codes and data items of type T.
