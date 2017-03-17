@@ -259,45 +259,55 @@ struct SphereRemoveConstraint {
   }
 };
 
-
+/** SelfCollision constraint, serial time complexity: O(n), can compute in parallel*/
+template<typename searcher_type>
 struct SelfCollisionConstraint {
-  using searcher_type =  SpaceSearcher<Node>;
+  // Functor for construct space searcher
   struct N2P {
     Point operator()(const Node& n) { return n.position(); }
   };
 
+  // Constructor
   SelfCollisionConstraint (const Box3D & large_bb, GraphType & graph):
-  searcher_(large_bb, graph.node_begin(), graph.node_end(), N2P()) {
-  }
+  large_bb_(large_bb), searcher_(large_bb, graph.node_begin(), graph.node_end(), N2P()) {}
+
+  // Functor for searching each node's bounding box in parallel
+  struct WorkOnNode {
+  	WorkOnNode(const searcher_type &  searcher): searcher_par_(searcher) {}
+  	void operator()(Node n) {
+  		      // Find its closet neighbor, and build a box
+      double radius = std::numeric_limits<double>::max();
+      radius = std::accumulate(n.edge_begin(), n.edge_end(), radius, 
+        [n] (double pre, Edge e) {  
+          return std::min(pre, normSq(n.position() - e.node2().position()));} );
+      Box3D bb(n.position() + radius * 1.1, n.position() - radius * 1.1);
+      // Itearate it's srounding area
+      for (auto iter = searcher_par_.begin(bb); iter != searcher_par_.end(bb); ++iter) {
+        auto n2 = *iter;
+        Point r = n.position() - n2.position();
+        double l2 = normSq(r);
+        if (n2 != n && normSq(r) < 0.9 * radius) {
+          n.value().vel -= (dot(r, n.value().vel) / l2) * r;
+        }
+      }
+  	}
+  	// The reference for space searcher
+  	const searcher_type & searcher_par_;
+  };
 
   template<typename G>
   void operator()(G &g, double t) {
-    for (auto ni = g.node_begin(); ni != g.node_end(); ++ni) {
-      // Find its closet neighbor, and build a box
-      double radius = std::numeric_limits<double>::max();
-      auto n = *ni;
-      radius = std::accumulate(n.edge_begin(), n.edge_end(), radius, 
-        [n] (double pre, Edge e) {  
-          return std::min(pre, normSq(e.node2().position() - e.node2().position()));} );
-      radius *= 0.8;
-      Box3D bb(n.position() + radius, n.position() - radius);
-
-      // Itear it's srounding area
-      for (auto iter = searcher_.begin(bb); iter != searcher_.end(bb); ++iter) {
-        auto n2 = *iter;
-        Point r = n.position() - n2.position();
-        if (n2 != n) {
-          n.value().vel -= (dot(r, n.value().vel) / normSq(r)) * r;
-        }
-      }
-
-    }
-
+  	// The positions of nodes are changing thus we need to reconstruct the searcher
+  	searcher_ = searcher_type(large_bb_, g.node_begin(), g.node_end(), N2P());
+  	auto work_on_node = WorkOnNode(searcher_);
+    thrust::for_each(thrust::omp::par, g.node_begin(), g.node_end(), work_on_node);
   }
-  const searcher_type searcher_;
+  searcher_type searcher_;
+  const Box3D& large_bb_;
 };
 
 
+/** This is a navie version self-collision constraint, takes O(n^2)*/
 struct NaiveSelfCollisionConstraint {
   template<typename G>
   void operator()(G &g, double t) {
@@ -435,11 +445,12 @@ int main(int argc, char** argv) {
       double t_end = 5;
       auto testForce = make_combined_force(GravityForce(), MassSpringForce(), DampingForce());
 
-      Box3D bb(Point(-10,-10,-10), Point(10, 10,10));
-      auto selfcollosion = SelfCollisionConstraint(bb, graph);
+      Box3D bb(Point(-3,30,-3), Point(3, -30, 3));
+      auto selfcollosion = SelfCollisionConstraint<SpaceSearcher<Node> >(bb, graph);
       auto testCons = make_combined_constraints(PlainConstraint(), SphereConstraint(), 
-      selfcollosion); //NaiveSelfCollisionConstraint()
-
+      selfcollosion); 
+      //NaiveSelfCollisionConstraint());
+      // For recored running time.
       CME212::Clock clock;
       std::vector<double> time_record_list;
 

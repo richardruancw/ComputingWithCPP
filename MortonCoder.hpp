@@ -12,7 +12,6 @@
 #include "CME212/Point.hpp"
 #include "CME212/BoundingBox.hpp"
 
-
 namespace detail {
 
 /** Spreads the first 10-bits of a 32-bit number so that there are two 0s
