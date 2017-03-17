@@ -15,7 +15,7 @@ Use ``GravityForce()``, ``MassSpringForce()``, ``DampingForce()``, and ``PlainCo
 Simulation parameters follow from HW4 suggestions
 
 #### Results
-| Grids    | Poly        | Average running time each step  |
+| Grids    | Policy        | Average running time each step  |
 | ---------|:-----------:| -------------------------------:|
 | grid 1   | sequantial  | 0.000249 |
 | grid 1   | parallel    | 0.001705 |
