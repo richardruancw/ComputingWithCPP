@@ -11,7 +11,7 @@
 
 int main()
 {
-  // Construct an empty graph
+
   using GraphType = Graph<int,int>;
   using Node = typename GraphType::node_type;
   GraphType graph;
