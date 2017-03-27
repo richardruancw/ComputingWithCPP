@@ -21,9 +21,7 @@ ifeq ($(arch-name),)
 endif
 
 # Define the C++ compiler to use
-# CXX := $(shell which clang++ -fopenmp=libiomp5)
-
-CXX := clang++ -fopenmp=libiomp5
+CXX := $(shell which clang++) -fopenmp=libiomp5
 
 # Dependency directory and flags
 DEPSDIR := $(shell mkdir -p .deps; echo .deps)
@@ -35,11 +33,13 @@ DEPSFLAGS = -MD -MF $(DEPSFILE) #-MP
 
 # Define any directories containing header files
 #   To include directories use -Ipath/to/files
-INCLUDES += -I/home/cme212-user/Documents/MTL/usr/include
-INCLUDES += -I/home/cme212-user/thrust
+
+
+INCLUDES += -I ../add_libraries/MTL-4.0.9555-Linux/usr/include/
+INCLUDES += -I ../add_libraries/thrust/
 
 # Define cxx compile flags
-CXXFLAGS  := -std=c++11 -O3 -W -Wall -Wextra #-Wfatal-errors
+CXXFLAGS := -std=c++11 -O3 #-W #-Wall #-Wextra #-Wfatal-errors
 CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP
 
 # Define any directories containing libraries
